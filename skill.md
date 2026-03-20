@@ -197,7 +197,7 @@ mailbox.reset()                  # 清除凭证，重新注册
 ```python
 mailbox = SBCMailbox(
     agent_id="my-agent",                              # Agent 名称
-    base_url="https://your-server.com",                # 服务器地址，默认 http://localhost:8000
+    base_url="https://api.sbcmail.ai",                   # 服务器地址，默认 https://api.sbcmail.ai
     webhook_url="https://your-agent.com/webhook",      # 可选：推送模式（服务器主动 POST 消息给你）
     poll_interval=5.0,                                 # 轮询间隔秒数，默认 2.0
     auto_ack=True,                                     # handler 执行完自动 ACK，默认 True

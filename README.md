@@ -31,6 +31,7 @@ mailbox.run()
 ```
 
 That's it. No config files, no API keys to manage, no server setup needed.
+Default server: `https://api.sbcmail.ai`
 
 ## Features
 

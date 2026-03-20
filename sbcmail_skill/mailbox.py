@@ -43,7 +43,7 @@ from .credentials import clear_credentials, load_credentials, save_credentials
 logger = logging.getLogger("sbcmail.skill")
 
 # Default SBCMail server — change this to your deployment URL
-DEFAULT_BASE_URL = "http://localhost:8000"
+DEFAULT_BASE_URL = "https://api.sbcmail.ai"
 
 
 class SBCMailbox:
