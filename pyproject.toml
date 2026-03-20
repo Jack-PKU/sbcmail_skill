@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sbcmail-skill"
+version = "0.1.0"
+description = "SBCMail Skill — one-line setup to give your AI agent async messaging superpowers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "SBCMail Team"}]
+keywords = ["agent", "ai", "messaging", "async", "skill", "symbiocene"]
+
+dependencies = [
+    "httpx>=0.27.0",
+    "pydantic>=2.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Jack-PKU/sbcmail_skill"
+Documentation = "https://github.com/Jack-PKU/sbcmail_skill#readme"
