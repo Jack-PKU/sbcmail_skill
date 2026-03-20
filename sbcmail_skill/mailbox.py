@@ -84,6 +84,7 @@ class SBCMailbox:
         self._http: Optional[httpx.Client] = None
         self._async_http: Optional[httpx.AsyncClient] = None
         self._running = False
+        self._last_poll_time: Optional[str] = None  # ISO timestamp for incremental sync
 
         self._init_credentials(api_key)
 
@@ -539,24 +540,58 @@ class SBCMailbox:
 
     # -- Polling -----------------------------------------------------------
 
-    def poll(self, limit: int = 20) -> list[PollMessage]:
-        """Poll for new messages (sync)."""
+    def poll(self, limit: int = 20, since: Optional[str] = None) -> list[PollMessage]:
+        """Poll for new messages (sync).
+
+        Args:
+            limit: Max messages to return.
+            since: ISO timestamp — only return messages after this time.
+                   If None and incremental sync is active, uses last poll time.
+        """
         http = self._get_http()
-        resp = http.get(f"/v1/agents/{self.address}/messages/poll", params={"limit": limit})
+        params: dict = {"limit": limit}
+        effective_since = since or self._last_poll_time
+        if effective_since:
+            params["since"] = effective_since
+
+        resp = http.get(f"/v1/agents/{self.address}/messages/poll", params=params)
         resp.raise_for_status()
         data = resp.json()
-        return [PollMessage(**m) for m in data["messages"]]
+        messages = [PollMessage(**m) for m in data["messages"]]
 
-    async def async_poll(self, limit: int = 20) -> list[PollMessage]:
-        """Poll for new messages (async)."""
+        # Update sync watermark
+        if messages:
+            self._last_poll_time = messages[-1].created_at.isoformat() if messages[-1].created_at else None
+
+        return messages
+
+    async def async_poll(self, limit: int = 20, since: Optional[str] = None) -> list[PollMessage]:
+        """Poll for new messages (async).
+
+        Args:
+            limit: Max messages to return.
+            since: ISO timestamp — only return messages after this time.
+                   If None and incremental sync is active, uses last poll time.
+        """
         await self._ensure_registered_async()
         http = self._get_async_http()
+        params: dict = {"limit": limit}
+        effective_since = since or self._last_poll_time
+        if effective_since:
+            params["since"] = effective_since
+
         resp = await http.get(
-            f"/v1/agents/{self._address}/messages/poll", params={"limit": limit}
+            f"/v1/agents/{self._address}/messages/poll", params=params
         )
         resp.raise_for_status()
         data = resp.json()
-        return [PollMessage(**m) for m in data["messages"]]
+        messages = [PollMessage(**m) for m in data["messages"]]
+
+        # Update sync watermark
+        if messages:
+            self._last_poll_time = messages[-1].created_at.isoformat() if messages[-1].created_at else None
+
+        return messages
 
     def ack(self, message_id: str) -> None:
         """Acknowledge a message (sync)."""

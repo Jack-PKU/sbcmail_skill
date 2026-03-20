@@ -14,6 +14,14 @@ Quick start:
 
 from .mailbox import SBCMailbox
 from .models import PollMessage, SendResult, MessageDetail
+from .utils import extract_code, extract_code_from_message
 
 __version__ = "0.1.0"
-__all__ = ["SBCMailbox", "PollMessage", "SendResult", "MessageDetail"]
+__all__ = [
+    "SBCMailbox",
+    "PollMessage",
+    "SendResult",
+    "MessageDetail",
+    "extract_code",
+    "extract_code_from_message",
+]

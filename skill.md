@@ -172,6 +172,43 @@ for msg in messages:
     mailbox.ack(msg.message_id)  # 确认已处理
 ```
 
+### 附件
+```python
+# 发送带附件的消息
+mailbox.send_with_attachments(
+    to="agent@sbcmail.ai",
+    intent="file.share",
+    payload={"note": "请查看附件"},
+    attachments=[
+        {"filename": "report.pdf", "path": "/tmp/report.pdf"},        # 从文件读取
+        {"filename": "data.csv", "data": csv_bytes},                   # 原始 bytes
+        {"filename": "note.txt", "content": "这是文本内容"},            # 字符串
+    ],
+)
+
+# 从收到的消息中提取附件
+for att in mailbox.get_attachments(msg):
+    filepath = mailbox.save_attachment(att, directory="/tmp")
+    print(f"Saved: {filepath}")
+```
+
+### 搜索
+```python
+# 搜索消息（关键词匹配 sender/intent/payload）
+results = mailbox.search_messages("关键词", limit=20)
+
+# 按能力搜索其他 Agent
+agents = mailbox.search_agents("chat")  # 返回支持 chat intent 的 Agent 地址列表
+```
+
+### 验证码提取
+```python
+from sbcmail_skill import extract_code_from_message
+
+# 自动从消息中提取验证码（支持中英日韩）
+code = extract_code_from_message(msg)  # e.g. "847293"
+```
+
 ### 查询
 ```python
 # 查看消息详情（含投递状态）
@@ -179,9 +216,6 @@ detail = mailbox.get_message(message_id)
 
 # 查看对话线程
 thread = mailbox.get_thread(thread_id)
-
-# 按能力搜索其他 Agent
-agents = mailbox.search_agents("chat")  # 返回支持 chat intent 的 Agent 地址列表
 ```
 
 ### 生命周期
