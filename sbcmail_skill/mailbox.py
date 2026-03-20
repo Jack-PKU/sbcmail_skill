@@ -381,6 +381,162 @@ class SBCMailbox:
             priority=priority,
         )
 
+    # -- Attachments -------------------------------------------------------
+
+    def send_with_attachments(
+        self,
+        to: Union[str, list[str]],
+        intent: str,
+        payload: Optional[dict] = None,
+        attachments: Optional[list[dict]] = None,
+        thread_id: Optional[str] = None,
+        reply_to: Optional[str] = None,
+        priority: str = "normal",
+        ttl: Optional[int] = None,
+    ) -> SendResult:
+        """Send a message with file attachments (sync).
+
+        attachments: list of dicts, each with:
+            - path: str (file path) OR
+            - data: bytes (raw bytes) OR
+            - content: str (text content)
+            AND:
+            - filename: str (required)
+            - content_type: str (optional, auto-detected from filename)
+        """
+        encoded = self._encode_attachments(attachments or [])
+        http = self._get_http()
+        body: dict = {
+            "sender": self.address,
+            "to": to,
+            "intent": intent,
+            "payload": payload or {},
+            "attachments": encoded,
+        }
+        if thread_id:
+            body["thread_id"] = thread_id
+        if reply_to:
+            body["reply_to"] = reply_to
+        if priority != "normal":
+            body["priority"] = priority
+        if ttl is not None:
+            body["ttl"] = ttl
+
+        resp = http.post("/v1/messages/send", json=body)
+        resp.raise_for_status()
+        return SendResult(**resp.json())
+
+    async def async_send_with_attachments(
+        self,
+        to: Union[str, list[str]],
+        intent: str,
+        payload: Optional[dict] = None,
+        attachments: Optional[list[dict]] = None,
+        thread_id: Optional[str] = None,
+        reply_to: Optional[str] = None,
+        priority: str = "normal",
+        ttl: Optional[int] = None,
+    ) -> SendResult:
+        """Send a message with file attachments (async).
+
+        attachments: list of dicts, each with:
+            - path: str (file path) OR
+            - data: bytes (raw bytes) OR
+            - content: str (text content)
+            AND:
+            - filename: str (required)
+            - content_type: str (optional, auto-detected from filename)
+        """
+        encoded = self._encode_attachments(attachments or [])
+        await self._ensure_registered_async()
+        http = self._get_async_http()
+        body: dict = {
+            "sender": self._address,
+            "to": to,
+            "intent": intent,
+            "payload": payload or {},
+            "attachments": encoded,
+        }
+        if thread_id:
+            body["thread_id"] = thread_id
+        if reply_to:
+            body["reply_to"] = reply_to
+        if priority != "normal":
+            body["priority"] = priority
+        if ttl is not None:
+            body["ttl"] = ttl
+
+        resp = await http.post("/v1/messages/send", json=body)
+        resp.raise_for_status()
+        return SendResult(**resp.json())
+
+    @staticmethod
+    def _encode_attachments(attachments: list[dict]) -> list[dict]:
+        """Encode attachments to the API format (base64 data)."""
+        import base64
+        import mimetypes
+
+        encoded = []
+        for att in attachments:
+            if "filename" not in att:
+                raise ValueError("Each attachment must have a 'filename' key")
+
+            # Determine raw bytes from one of the supported input formats
+            if "path" in att:
+                with open(att["path"], "rb") as f:
+                    raw = f.read()
+            elif "data" in att and isinstance(att["data"], bytes):
+                raw = att["data"]
+            elif "content" in att:
+                raw = att["content"].encode("utf-8")
+            else:
+                raise ValueError(
+                    f"Attachment '{att['filename']}' must provide 'path', 'data' (bytes), or 'content' (str)"
+                )
+
+            # Auto-detect content_type if not provided
+            content_type = att.get("content_type")
+            if not content_type:
+                mime, _ = mimetypes.guess_type(att["filename"])
+                content_type = mime or "application/octet-stream"
+
+            encoded.append({
+                "filename": att["filename"],
+                "content_type": content_type,
+                "data": base64.b64encode(raw).decode("ascii"),
+            })
+
+        return encoded
+
+    @staticmethod
+    def get_attachments(msg) -> list[dict]:
+        """Extract attachments from a received message's payload.
+
+        Returns a list of dicts with keys: filename, content_type, data (base64 str).
+        Returns an empty list if the message has no attachments.
+        """
+        payload = msg.payload if hasattr(msg, "payload") else msg
+        if isinstance(payload, dict):
+            return payload.get("_attachments", [])
+        return []
+
+    @staticmethod
+    def decode_attachment(attachment: dict) -> bytes:
+        """Decode a base64-encoded attachment to raw bytes."""
+        import base64
+        return base64.b64decode(attachment["data"])
+
+    @staticmethod
+    def save_attachment(attachment: dict, directory: str = ".") -> str:
+        """Decode and save an attachment to disk. Returns the file path."""
+        import base64
+        import os
+        filepath = os.path.join(directory, attachment["filename"])
+        raw = base64.b64decode(attachment["data"])
+        with open(filepath, "wb") as f:
+            f.write(raw)
+        return filepath
+
     # -- Polling -----------------------------------------------------------
 
     def poll(self, limit: int = 20) -> list[PollMessage]:
@@ -534,6 +690,17 @@ class SBCMailbox:
         """Get all messages in a thread (sync)."""
         http = self._get_http()
         resp = http.get(f"/v1/threads/{thread_id}", params={"limit": 100})
+        resp.raise_for_status()
+        data = resp.json()
+        return [PollMessage(**m) for m in data["messages"]]
+
+    def search_messages(self, query: str, limit: int = 20) -> list[PollMessage]:
+        """Search your messages by keyword (sync).
+
+        Searches across sender, intent, and payload fields.
+        """
+        http = self._get_http()
+        resp = http.get("/v1/messages/search", params={"q": query, "limit": limit})
         resp.raise_for_status()
         data = resp.json()
         return [PollMessage(**m) for m in data["messages"]]
