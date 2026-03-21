@@ -158,13 +158,13 @@ class SBCMailbox:
         if resp.status_code == 409:
             self._address = f"{self.agent_id}@{self.base_url.split('/')[-1]}"
             info_resp = httpx.get(
-                f"{self.base_url}/v1/agents/{self.agent_id}@agentmail.ai/info",
+                f"{self.base_url}/v1/agents/{self.agent_id}@sbcmail.ai/info",
                 timeout=30.0,
             )
             if info_resp.status_code == 200:
                 self._address = info_resp.json()["address"]
             else:
-                self._address = f"{self.agent_id}@agentmail.ai"
+                self._address = f"{self.agent_id}@sbcmail.ai"
 
             save_credentials(self.agent_id, {
                 "base_url": self.base_url,
@@ -221,12 +221,12 @@ class SBCMailbox:
 
             if resp.status_code == 409:
                 info_resp = await client.get(
-                    f"{self.base_url}/v1/agents/{self.agent_id}@agentmail.ai/info",
+                    f"{self.base_url}/v1/agents/{self.agent_id}@sbcmail.ai/info",
                 )
                 if info_resp.status_code == 200:
                     self._address = info_resp.json()["address"]
                 else:
-                    self._address = f"{self.agent_id}@agentmail.ai"
+                    self._address = f"{self.agent_id}@sbcmail.ai"
 
                 save_credentials(self.agent_id, {
                     "base_url": self.base_url,
