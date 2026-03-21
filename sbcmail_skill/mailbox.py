@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SBCMailbox — the core skill class.
 
 Provides a high-level, drop-in mailbox for any AI agent. One line to install,
